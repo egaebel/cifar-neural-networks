@@ -190,16 +190,16 @@ local function thirdArch()
         2, 2))
     net:add(nn.ReLU(true))
     net:add(nn.Dropout(0.2))
-    net:add(nn.SpatialBatchNormalization(64))
     net:add(nn.SpatialMaxPooling(3, 3, 1, 1))
+    net:add(nn.SpatialBatchNormalization(64))
     net:add(nn.SpatialConvolution(64, 128, 
         3, 3,
         1, 1,
         1, 1))
     net:add(nn.ReLU(true))
     net:add(nn.Dropout(0.2))
-    net:add(nn.SpatialBatchNormalization(128))
     net:add(nn.SpatialMaxPooling(3, 3, 2, 2))
+    net:add(nn.SpatialBatchNormalization(128))
     -- Inception Module
     reductions = {
         32,
@@ -243,11 +243,9 @@ local function thirdArch()
         512
     }
     net:add(inceptionModule(768, 1024, reductions, expansions))
-    net:add(nn.SpatialAveragePooling(3, 3, 1, 1))
-    net:add(nn.SpatialAveragePooling(3, 3, 2, 2))
     net:add(nn.SpatialAveragePooling(3, 3, 3, 3))
-    net:add(nn.View(1024))
-    net:add(nn.Linear(1024, 512))
+    net:add(nn.View(1024 * 3 * 3))
+    net:add(nn.Linear(1024 * 3 * 3, 512))
     net:add(nn.Dropout(0.4))
     net:add(nn.Linear(512, 256))
     net:add(nn.Dropout(0.4))

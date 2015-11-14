@@ -32,6 +32,9 @@ def max_pool_33_11(width, height):
 def max_pool_33_22(width, height):
     return single_layer_compute(width, height, 3, 3, 2, 2, 0, 0)
 
+def max_pool_33_33(width, height):
+    return single_layer_compute(width, height, 3, 3, 3, 3, 0, 0)
+
 def max_pool_22_11(width, height):
     return single_layer_compute(width, height, 2, 2, 1, 1, 0, 0)
 
@@ -50,11 +53,15 @@ print("width: %f height: %f" % (width, height))
 width, height = max_pool_33_22(width, height)
 print("width: %f height: %f" % (width, height))
 
-width, height = max_pool_33_22(width, height)
+print(inception_layer_dims(width, height))
+
+width, height = max_pool_33_11(width, height)
 print("width: %f height: %f" % (width, height))
 
 width, height = max_pool_33_11(width, height)
 print("width: %f height: %f" % (width, height))
 
-width, height = max_pool_33_22(width, height)
+print(inception_layer_dims(width, height))
+
+width, height = max_pool_33_33(width, height)
 print("width: %f height: %f" % (width, height))
