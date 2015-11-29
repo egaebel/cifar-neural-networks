@@ -66,7 +66,9 @@ local function prepCifar10Data(pathForData)
     forceLoad = false
     forceConvert = false
     --Download and/or untar if necessary
-    if not path.exists('cifar-10-binary.tar.gz') or forceLoad then
+    if (not path.exists('cifar-10-binary.tar.gz')
+            and not path.exists('cifar-10-batches-bin')) 
+            or forceLoad then
         print 'path cifar-10-binary.tar.gz DNE, downloading and extractin'
         os.execute('wget -c http://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz')
         os.execute('tar -xvf cifar-10-binary.tar.gz')
@@ -83,7 +85,7 @@ local function prepCifar10Data(pathForData)
     --Convert training, validation, and test data from binary to torch tensor if necessary
     if not path.exists(pathForData .. trainFile) or forceConvert then
         --Set percentage to set aside for validation
-        local validationRatio = .2
+        local validationRatio = 0.2
         --Load all training data
         local inputTrainFileNames = {'cifar-10-batches-bin/data_batch_1.bin',
             'cifar-10-batches-bin/data_batch_2.bin',
@@ -153,6 +155,7 @@ end
 
 -- Perform data augmentation on the passed dataset
 local function dataAugmentation(passedDataset)
+    -- TODO
 end
 
 --------------------------------------------------------------------------------
@@ -228,6 +231,38 @@ if not EXCLUDE_CUDA_FLAG then
         self.data = self.data:cuda()
         self.labels = self.labels:cuda()
     end
+end
+
+-- Group the loaded data by label and sort by label number
+function Cifar10Loader:groupAndSort()
+    concatDims = torch.LongStorage(5)--(1, 1, 1, 1, 1)
+    concatDims[1] = self.data:size(1)
+    concatDims[2] = self.data:size(2)
+    concatDims[3] = self.data:size(3)
+    concatDims[4] = self.data:size(4)
+    concatDims[5] = 1
+    self.data:resize(concatDims)
+    for i = 1, self.data:size(1) do
+        print(self.data[i])
+        print(self.data[i]:select(1, i))
+        print(self.data[i]:select(1, i):select(2, i))
+        print(self.data[i]:select(1, i):select(2, i):select(3, i))
+        concatDims[i]:select(2, i):select(3, i):select(4, i)
+    end
+    -- [res, val, idx] torch.group([val, idx], tensor, [samegrp, desc])
+    --  res is a table of {idx=torch.LongTensor,val=torch.Tensor}.
+    --  val is a Tensor of the same type as tensor. It will be used to store and return the sorted values.
+    --  idx is a torch.LongTensor used to store the sorted indices.
+    --  tensor is a Tensor that will have its values sorted, and then grouped by the samegrp function.
+    --  samegrp is a function taking two argument : first_val is the first value of the current group, 
+    --      while val is the current value of the current group. 
+    --      When the function returns true, it is assumed that val is of the same group as first_val. 
+    --      Defaults to function(first_val, val) return first_val == val; end
+    --      desc is a boolean indicating whether the tensor gets sorted in descending order. Defaults to false. 
+    local sameGroupEval = function(firstVal, val)
+        
+    end
+    torch.group()
 end
 
 --------------------------------------------------------------------------------

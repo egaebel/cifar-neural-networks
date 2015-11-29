@@ -12,8 +12,12 @@ require 'cifar10-data-loader'
 -- CUDA Import Stuff
 local EXCLUDE_CUDA_FLAG = false
 local function cudaRequires() 
+    print('Importing cutorch....')
     require 'cutorch'
+    print('Importing cunn.......')
     require 'cunn'
+    --print('Importing cudnn......')
+    --require 'cudnn'
 end
 if pcall(cudaRequires) then
     print('Imported cuda modules in first-cnn-arch')
@@ -21,41 +25,47 @@ else
     print('Failed to import cuda modules in first-cnn-arch')
     EXCLUDE_CUDA_FLAG = true
 end
+local nnLib = nn
+--[[
+if not EXCLUDE_CUDA_FLAG then
+    nnLib = cudnn
+end
+--]]
 
 -- Got maybe like 75%?
 local function firstArch()
-    net = nn.Sequential()
+    net = nnLib.Sequential()
     --3 input channels, 6 output channels, 5x5 convolution kernel
     --1x1 strides, 3x3 padding
-    net:add(nn.SpatialConvolution(3, 6, 5, 5, 1, 1, 3, 3))
-    net:add(nn.ReLU(true))
-    net:add(nn.SpatialMaxPooling(2, 2, 2, 2))
+    net:add(nnLib.SpatialConvolution(3, 6, 5, 5, 1, 1, 3, 3))
+    net:add(nnLib.ReLU(true))
+    net:add(nnLib.SpatialMaxPooling(2, 2, 2, 2))
     --6 input channels, 9 output channels, 5x5 convolution kernel
     --1x1 strides, 3x3 padding
-    net:add(nn.SpatialConvolution(6, 9, 5, 5, 1, 1, 3, 3))
-    net:add(nn.ReLU(true))
-    net:add(nn.SpatialMaxPooling(2, 2, 2, 2))
+    net:add(nnLib.SpatialConvolution(6, 9, 5, 5, 1, 1, 3, 3))
+    net:add(nnLib.ReLU(true))
+    net:add(nnLib.SpatialMaxPooling(2, 2, 2, 2))
     --9 input channels, 12 output channels, 3x3 convolution kernel
     --1x1 strides, 2x2 padding
-    net:add(nn.SpatialConvolution(9, 12, 3, 3, 1, 1, 2, 2))
-    net:add(nn.ReLU(true))
-    net:add(nn.SpatialMaxPooling(2, 2, 2, 2))
+    net:add(nnLib.SpatialConvolution(9, 12, 3, 3, 1, 1, 2, 2))
+    net:add(nnLib.ReLU(true))
+    net:add(nnLib.SpatialMaxPooling(2, 2, 2, 2))
     --12 input channels, 15 output channels, 3x3 convolution kernel
     --1x1 strides, 2x2 padding
-    net:add(nn.SpatialConvolution(12, 15, 3, 3, 1, 1, 2, 2))
-    net:add(nn.ReLU(true))
-    net:add(nn.SpatialMaxPooling(2, 2, 2, 2))
+    net:add(nnLib.SpatialConvolution(12, 15, 3, 3, 1, 1, 2, 2))
+    net:add(nnLib.ReLU(true))
+    net:add(nnLib.SpatialMaxPooling(2, 2, 2, 2))
     --15 input channels, 18 output channels, 3x3 convolution kernel
     --1x1 strides, 2x2 padding
-    net:add(nn.SpatialConvolution(15, 18, 3, 3, 1, 1, 2, 2))
-    net:add(nn.ReLU(true))
-    net:add(nn.SpatialMaxPooling(2, 2, 2, 2))
+    net:add(nnLib.SpatialConvolution(15, 18, 3, 3, 1, 1, 2, 2))
+    net:add(nnLib.ReLU(true))
+    net:add(nnLib.SpatialMaxPooling(2, 2, 2, 2))
 
-    net:add(nn.View(18 * 2 * 2))
-    net:add(nn.Linear(18 * 2 * 2, 120))
-    net:add(nn.Linear(120, 84))
-    net:add(nn.Linear(84, 10))
-    --net:add(nn.LogSoftMax()) -- Creates log-probability output    
+    net:add(nnLib.View(18 * 2 * 2))
+    net:add(nnLib.Linear(18 * 2 * 2, 120))
+    net:add(nnLib.Linear(120, 84))
+    net:add(nnLib.Linear(84, 10))
+    --net:add(nnLib.LogSoftMax()) -- Creates log-probability output    
 
     return net
 end
@@ -85,65 +95,71 @@ local function inceptionModule(inputChannels, outputChannels, reductions, expans
         return nil
     end
 
-    local inception = nn.DepthConcat(2)
+    local inception = nnLib.DepthConcat(2)
 
-    local column1 = nn.Sequential()
-    column1:add(nn.SpatialConvolution(inputChannels, reductions[1],
+    local column1 = nnLib.Sequential()
+    column1:add(nnLib.SpatialConvolution(inputChannels, reductions[1],
         1, 1,  -- Convolution kernel
         1, 1)) -- Stride
-    column1:add(nn.ReLU(true))
+    column1:add(nnLib.ReLU(true))
     inception:add(column1)
     
-    local column2 = nn.Sequential()
-    column2:add(nn.SpatialConvolution(inputChannels, reductions[2],
+    local column2 = nnLib.Sequential()
+    column2:add(nnLib.SpatialConvolution(inputChannels, reductions[2],
         1, 1, 
         1, 1))
-    column2:add(nn.ReLU(true))
-    column2:add(nn.SpatialConvolution(reductions[2], expansions[1],
+    column2:add(nnLib.ReLU(true))
+    column2:add(nnLib.SpatialConvolution(reductions[2], expansions[1],
         3, 3,  -- Convolution kernel
         1, 1)) -- Stride
-    column2:add(nn.ReLU(true))
+    column2:add(nnLib.ReLU(true))
     inception:add(column2)
 
-    local column3 = nn.Sequential()
-    column3:add(nn.SpatialConvolution(inputChannels, reductions[3],
+    local column3 = nnLib.Sequential()
+    column3:add(nnLib.SpatialConvolution(inputChannels, reductions[3],
         1, 1, 
         1, 1))
-    column3:add(nn.ReLU(true))
-    column3:add(nn.SpatialConvolution(reductions[3], expansions[2],
+    column3:add(nnLib.ReLU(true))
+    column3:add(nnLib.SpatialConvolution(reductions[3], expansions[2],
         5, 5,  -- Convolution kernel
         1, 1)) -- Stride
-    column3:add(nn.ReLU(true))
+    column3:add(nnLib.ReLU(true))
     inception:add(column3)
 
-    local column4 = nn.Sequential()
-    column4:add(nn.SpatialMaxPooling(3, 3, 1, 1))
-    column4:add(nn.SpatialConvolution(inputChannels, reductions[4],
+    local column4 = nnLib.Sequential()
+    column4:add(nnLib.SpatialMaxPooling(3, 3, 1, 1))
+    column4:add(nnLib.SpatialConvolution(inputChannels, reductions[4],
         1, 1,  -- Convolution kernel
         1, 1)) -- Stride
-    column4:add(nn.ReLU(true))
+    column4:add(nnLib.ReLU(true))
     inception:add(column4)
 
     return inception
 end
 
+---------------------SGD TRAINING-----------------------------------------------
 -- Achieved 80% on validation
 -- Began to overfit
 -- While achieving 80% on validation, achieved 90% on training
+--------------------------------------------------------------------------------
+---------------------LBFGS TRAINING-----------------------------------------------
+-- OOM!?
+--------------------------------------------------------------------------------
 local function secondArch()
-    net = nn.Sequential()
-    net:add(nn.SpatialConvolution(3, 64, 
+
+    net = nnLib.Sequential()
+    net:add(nnLib.SpatialConvolution(3, 64, 
         5, 5,
         1, 1))
-    net:add(nn.ReLU(true))
-    net:add(nn.Dropout(0.2))
-    net:add(nn.SpatialBatchNormalization(64))
-    net:add(nn.SpatialConvolution(64, 128, 
+    net:add(nnLib.ReLU(true))
+    net:add(nnLib.Dropout(0.2))
+    net:add(nnLib.SpatialBatchNormalization(64))
+    net:add(nnLib.SpatialConvolution(64, 128, 
         3, 3,
         2, 2))
-    net:add(nn.ReLU(true))
-    net:add(nn.Dropout(0.2))
-    net:add(nn.SpatialBatchNormalization(128))
+    net:add(nnLib.ReLU(true))
+    net:add(nnLib.Dropout(0.2))
+    net:add(nnLib.SpatialBatchNormalization(128))
     -- Inception Module
     reductions = {
         64,
@@ -156,8 +172,8 @@ local function secondArch()
         64
     }
     net:add(inceptionModule(128, 512, reductions, expansions))
-    net:add(nn.SpatialConvolution(512, 768, 3, 3, 1, 1))
-    net:add(nn.SpatialMaxPooling(3, 3, 2, 2))
+    net:add(nnLib.SpatialConvolution(512, 768, 3, 3, 1, 1))
+    net:add(nnLib.SpatialMaxPooling(3, 3, 2, 2))
     -- Inception Module
     reductions = {
         64,
@@ -170,36 +186,99 @@ local function secondArch()
         512
     }
     net:add(inceptionModule(768, 1024, reductions, expansions))
-    net:add(nn.SpatialAveragePooling(5, 5, 1, 1))
-    net:add(nn.View(1024))
-    net:add(nn.Linear(1024, 512))
-    net:add(nn.Dropout(0.4))
-    net:add(nn.Linear(512, 256))
-    net:add(nn.Dropout(0.4))
-    net:add(nn.Linear(256, 10))
-
+    net:add(nnLib.SpatialAveragePooling(5, 5, 1, 1))
+    net:add(nnLib.View(1024))
+    net:add(nnLib.Linear(1024, 512))
+    net:add(nnLib.Dropout(0.4))
+    net:add(nnLib.Linear(512, 256))
+    net:add(nnLib.Dropout(0.4))
+    net:add(nnLib.Linear(256, 10))
 
     return net
 end
 
+local function secondArchTuned()
+
+    net = nnLib.Sequential()
+    net:add(nnLib.SpatialConvolution(3, 64, 
+        5, 5,
+        1, 1))
+    net:add(nnLib.ReLU(true))
+    net:add(nnLib.Dropout(0.2))
+    net:add(nnLib.SpatialConvolution(64, 128, 
+        3, 3,
+        2, 2))
+    net:add(nnLib.ReLU(true))
+    net:add(nnLib.Dropout(0.2))
+    -- Inception Module
+    reductions = {
+        64,
+        64,
+        32,
+        128
+    }
+    expansions = {
+        256,
+        64
+    }
+    net:add(inceptionModule(128, 512, reductions, expansions))
+    net:add(nnLib.SpatialConvolution(512, 768, 3, 3, 1, 1))
+    net:add(nnLib.SpatialMaxPooling(3, 3, 2, 2))
+    -- Inception Module
+    reductions = {
+        64,
+        256,
+        256,
+        128
+    }
+    expansions = {
+        320,
+        512
+    }
+    net:add(inceptionModule(768, 1024, reductions, expansions))
+    -- Inception Module
+    reductions = {
+        128,
+        512,
+        512,
+        256
+    }
+    expansions = {
+        640,
+        1024
+    }
+    net:add(inceptionModule(1024, 2048, reductions, expansions))
+    net:add(nnLib.SpatialAveragePooling(5, 5, 1, 1))
+    net:add(nnLib.View(2048))
+    net:add(nnLib.Linear(2048, 1024))
+    net:add(nnLib.Dropout(0.4))
+    net:add(nnLib.Linear(1024, 512))
+    net:add(nnLib.Dropout(0.4))
+    net:add(nnLib.Linear(512, 10))
+
+    return net
+end
+
+-- 80% test accuracy
+-- lgbfs runs out of memory
 local function thirdArch()
-    net = nn.Sequential()
-    net:add(nn.SpatialConvolution(3, 64, 
+    net = nnLib.Sequential()
+    net:add(nnLib.SpatialConvolution(3, 64, 
         5, 5,
         1, 1,
         2, 2))
-    net:add(nn.ReLU(true))
-    net:add(nn.Dropout(0.2))
-    net:add(nn.SpatialMaxPooling(3, 3, 1, 1))
-    net:add(nn.SpatialBatchNormalization(64))
-    net:add(nn.SpatialConvolution(64, 128, 
+    net:add(nnLib.ReLU(true))
+    net:add(nnLib.Dropout(0.2))
+    net:add(nnLib.SpatialMaxPooling(3, 3, 1, 1))
+    net:add(nnLib.SpatialBatchNormalization(64))
+    net:add(nnLib.SpatialConvolution(64, 128, 
         3, 3,
         1, 1,
         1, 1))
-    net:add(nn.ReLU(true))
-    net:add(nn.Dropout(0.2))
-    net:add(nn.SpatialMaxPooling(3, 3, 2, 2))
-    net:add(nn.SpatialBatchNormalization(128))
+    net:add(nnLib.ReLU(true))
+    net:add(nnLib.Dropout(0.2))
+    net:add(nnLib.SpatialMaxPooling(3, 3, 2, 2))
+    net:add(nnLib.SpatialBatchNormalization(128))
     -- Inception Module
     reductions = {
         32,
@@ -224,13 +303,13 @@ local function thirdArch()
         128
     }
     net:add(inceptionModule(256, 512, reductions, expansions))
-    net:add(nn.SpatialMaxPooling(3, 3, 1, 1))
+    net:add(nnLib.SpatialMaxPooling(3, 3, 1, 1))
 
-    net:add(nn.SpatialConvolution(512, 768, 
+    net:add(nnLib.SpatialConvolution(512, 768, 
             3, 3, 
             1, 1, 
             1, 1))
-    net:add(nn.SpatialMaxPooling(3, 3, 1, 1))
+    net:add(nnLib.SpatialMaxPooling(3, 3, 1, 1))
     -- Inception Module
     reductions = {
         64,
@@ -243,13 +322,92 @@ local function thirdArch()
         512
     }
     net:add(inceptionModule(768, 1024, reductions, expansions))
-    net:add(nn.SpatialAveragePooling(3, 3, 3, 3))
-    net:add(nn.View(1024 * 3 * 3))
-    net:add(nn.Linear(1024 * 3 * 3, 512))
-    net:add(nn.Dropout(0.4))
-    net:add(nn.Linear(512, 256))
-    net:add(nn.Dropout(0.4))
-    net:add(nn.Linear(256, 10))
+    net:add(nnLib.SpatialAveragePooling(3, 3, 3, 3))
+    net:add(nnLib.View(1024 * 3 * 3))
+    net:add(nnLib.Linear(1024 * 3 * 3, 512))
+    net:add(nnLib.Dropout(0.4))
+    net:add(nnLib.Linear(512, 256))
+    net:add(nnLib.Dropout(0.4))
+    net:add(nnLib.Linear(256, 10))
+
+    return net
+end
+
+local function fourthArch()
+    net = nnLib.Sequential()
+    
+    net:add(nnLib.SpatialConvolution(3, 8, 
+            3, 3, 
+            1, 1, 
+            1, 1))
+    net:add(nnLib.ReLU(true))
+    
+    net:add(nnLib.SpatialConvolution(8, 16, 
+            3, 3, 
+            1, 1, 
+            1, 1))
+    net:add(nnLib.ReLU(true))
+    net:add(nnLib.SpatialMaxPooling(2, 2, 1, 1))
+
+    net:add(nnLib.SpatialConvolution(16, 32, 
+            3, 3, 
+            1, 1, 
+            1, 1))
+    net:add(nnLib.ReLU(true))
+    net:add(nnLib.SpatialMaxPooling(2, 2, 2, 2))
+
+    --[[
+    reductions = {
+        8,
+        16,
+        8,
+        8
+    }
+    expansions = {
+        32,
+        16
+    }
+    net:add(inceptionModule(32, 64, reductions, expansions))
+    --]]
+    net:add(nnLib.SpatialConvolution(32, 64, 3, 3, 1, 1, 1, 1))
+
+    --[[
+    reductions = {
+        16,
+        32,
+        16,
+        16
+    }
+    expansions = {
+        64,
+        32
+    }
+    net:add(inceptionModule(64, 128, reductions, expansions))
+    --]]
+    net:add(nnLib.SpatialConvolution(64, 128, 3, 3, 1, 1, 1, 1))
+    net:add(nnLib.SpatialMaxPooling(3, 3, 2, 2))
+
+    --[[
+    reductions = {
+        32,
+        64,
+        32,
+        32
+    }
+    expansions = {
+        128,
+        64
+    }
+    net:add(inceptionModule(128, 256, reductions, expansions))
+    --]]
+    net:add(nnLib.SpatialConvolution(128, 256, 3, 3, 1, 1, 1, 1))
+
+    net:add(nnLib.SpatialMaxPooling(3, 3, 3, 3))
+
+    net:add(nnLib.View(256 * 2 * 2))
+    net:add(nnLib.Linear(256 * 2 * 2, 256))
+    net:add(nnLib.ReLU(true))
+    net:add(nnLib.Linear(256, 10))
 
     return net
 end
@@ -276,12 +434,12 @@ local opt = {
 }
 
 -- Define neural network
-net = thirdArch()
+net = secondArchTuned()
 print("Network: ")
 print(net)
 
 -- Define loss function and stochastic gradient parameters and style
-criterion = nn.CrossEntropyCriterion()
+criterion = nnLib.CrossEntropyCriterion()
 
 -- CUDA-fy loss function, model, and data set
 if not EXCLUDE_CUDA_FLAG then
@@ -303,6 +461,7 @@ parameters, gradParameters = net:getParameters()
 confusion = optim.ConfusionMatrix(trainingDataLoader.classes)
 
 local function train()
+    collectgarbage()
     net:training()
     -- Setup mini-batches
     local indices = torch.randperm(trainingDataLoader.data:size(1)):long():split(opt.batchSize)
@@ -334,6 +493,8 @@ local function train()
 
             return f, gradParameters
         end
+        collectgarbage()
+        --optim.lbfgs(feval, parameters, optimState) -- Unusable with archThree....
         optim.sgd(feval, parameters, optimState)
     end
     confusion:updateValids()
@@ -353,8 +514,10 @@ local function test()
         testingDataLoader.data = testingDataLoader.data:cuda()
     end
 
+    collectgarbage()
     print('Beginning Testing')
     print('Testing set size: ', testingDataLoader.data:size(1))
+    local tic = torch.tic()
     net:evaluate()
     for i = 1, testingDataLoader.data:size(1), opt.batchSize do
         local outputs
@@ -369,13 +532,15 @@ local function test()
     end
 
     confusion:updateValids()
-    print('Test Accuracy: ', confusion.totalValid * 100, '%')
+    print(('Test Accuracy: ' .. c.cyan'%.2f' .. ' %%\t time: %.2f s'):format(
+            confusion.totalValid * 100, torch.toc(tic)))
     print('------------------------------------------------')
 end
 
 --------------------------------------------------------------------------------
 -- Runner code, main loop-------------------------------------------------------
 --------------------------------------------------------------------------------
+collectgarbage()
 print('Running for ', opt.maxEpoch, ' epochs')
 local globalTic = torch.tic()
 for i = 1, opt.maxEpoch do

@@ -1,6 +1,6 @@
 from math import floor
 
-def single_layer_compute(width, height, kW, kH, dW, dH, padW, padH):
+def single_layer_compute(width, height, kW, kH, dW, dH, padW=0, padH=0):
     # width = 28
     # height = 28
     # kW = 3
@@ -41,7 +41,20 @@ def max_pool_22_11(width, height):
 def max_pool_22_22(width, height):
     return single_layer_compute(width, height, 2, 2, 2, 2, 0, 0)
 
+def global_max_pool(width, height, pool_width, pool_height):
+    return single_layer_compute(width, height, 
+        pool_width, pool_height, 
+        pool_width, pool_height, 
+        0, 0)
+
 width = 32
 height = 32
+
+#def single_layer_compute(width, height, kW, kH, dW, dH, padW=0, padH=0):
+
+width, height = max_pool_33_22(width, height)
+width, height = max_pool_33_33(width, height)
+width, height = max_pool_33_33(width, height)
+
 
 print("width: %f height: %f" % (width, height))

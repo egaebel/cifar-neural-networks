@@ -13,7 +13,7 @@ else
     EXCLUDE_CUDA_FLAG = true
 end
 
-local filename = paths.concat('model-nets', 'model.net')
+local filename = paths.concat('..', 'model-nets', "second-arch--no-normalization.net")
 print('==> loading model from ' .. filename)
 net = torch.load(filename)
 print(net)
