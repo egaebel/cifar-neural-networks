@@ -1074,6 +1074,7 @@ end
 
 -- No inception
 -- Fixed dropout...
+-- ~80% accuracy
 function sixthArch()
 
     local opt = {
@@ -1119,6 +1120,144 @@ function sixthArch()
     net:add(nn.ReLU(true))
     net:add(nn.SpatialMaxPooling(3, 3, 2, 2))
 
+    net:add(nn.SpatialConvolution(768, 1024,
+            3, 3,
+            1, 1,
+            1, 1))
+    net:add(nn.SpatialBatchNormalization(1024))
+    net:add(nn.ReLU(true))
+
+    -- Downsample
+    net:add(nn.SpatialConvolution(1024, 10, 
+            1, 1, 
+            1, 1))
+    net:add(nn.SpatialAveragePooling(3, 3, 3, 3))
+    net:add(nn.Reshape(10))
+
+    return net, opt
+end
+
+-- No inception
+-- Fixed dropout...
+function sixthArchMoreDropout()
+
+    local dropoutRatio = 0.5
+
+    local opt = {
+        netSaveDir = 'model-nets',
+        batchSize = 128,
+        learningRate = 1.0,
+        weightDecay = 0.0005,
+        momentum = 0.9,
+        learningRateDecay = 0.00000001,
+    }
+
+    net = nn.Sequential()
+    net:add(nn.SpatialConvolution(3, 64, 
+            3, 3,
+            1, 1,
+            1, 1))
+    net:add(nn.SpatialBatchNormalization(64))
+    net:add(nn.ReLU(true))
+    net:add(nn.SpatialMaxPooling(3, 3, 1, 1))
+
+    net:add(nn.SpatialDropout(dropoutRatio))
+    net:add(nn.SpatialConvolution(64, 128, 
+            3, 3,
+            1, 1,
+            1, 1))
+    net:add(nn.SpatialBatchNormalization(128))
+    net:add(nn.ReLU(true))
+    net:add(nn.SpatialMaxPooling(3, 3, 2, 2))
+
+    net:add(nn.SpatialDropout(dropoutRatio))
+    net:add(nn.SpatialConvolution(128, 512,
+            3, 3,
+            1, 1,
+            1, 1))
+    net:add(nn.SpatialBatchNormalization(512))
+    net:add(nn.ReLU(true))
+    net:add(nn.SpatialMaxPooling(3, 3, 1, 1))
+    
+    net:add(nn.SpatialDropout(dropoutRatio))
+    net:add(nn.SpatialConvolution(512, 768, 
+            3, 3, 
+            1, 1,
+            1, 1))
+    net:add(nn.SpatialBatchNormalization(768))
+    net:add(nn.ReLU(true))
+    net:add(nn.SpatialMaxPooling(3, 3, 2, 2))
+
+    net:add(nn.SpatialDropout(dropoutRatio))
+    net:add(nn.SpatialConvolution(768, 1024,
+            3, 3,
+            1, 1,
+            1, 1))
+    net:add(nn.SpatialBatchNormalization(1024))
+    net:add(nn.ReLU(true))
+
+    -- Downsample
+    net:add(nn.SpatialConvolution(1024, 10, 
+            1, 1, 
+            1, 1))
+    net:add(nn.SpatialAveragePooling(3, 3, 3, 3))
+    net:add(nn.Reshape(10))
+
+    return net, opt
+end
+
+-- No inception
+-- Fixed dropout...
+function sixthArchMoreOrLessDropout()
+
+    local dropoutRatio = 0.5
+
+    local opt = {
+        netSaveDir = 'model-nets',
+        batchSize = 128,
+        learningRate = 1.0,
+        weightDecay = 0.0005,
+        momentum = 0.9,
+        learningRateDecay = 0.00000001,
+    }
+
+    net = nn.Sequential()
+    net:add(nn.SpatialConvolution(3, 64, 
+            3, 3,
+            1, 1,
+            1, 1))
+    net:add(nn.SpatialBatchNormalization(64))
+    net:add(nn.ReLU(true))
+    net:add(nn.SpatialMaxPooling(3, 3, 1, 1))
+
+    net:add(nn.SpatialDropout(0.5))
+    net:add(nn.SpatialConvolution(64, 128, 
+            3, 3,
+            1, 1,
+            1, 1))
+    net:add(nn.SpatialBatchNormalization(128))
+    net:add(nn.ReLU(true))
+    net:add(nn.SpatialMaxPooling(3, 3, 2, 2))
+
+    net:add(nn.SpatialDropout(0.4))
+    net:add(nn.SpatialConvolution(128, 512,
+            3, 3,
+            1, 1,
+            1, 1))
+    net:add(nn.SpatialBatchNormalization(512))
+    net:add(nn.ReLU(true))
+    net:add(nn.SpatialMaxPooling(3, 3, 1, 1))
+    
+    net:add(nn.SpatialDropout(0.2))
+    net:add(nn.SpatialConvolution(512, 768, 
+            3, 3, 
+            1, 1,
+            1, 1))
+    net:add(nn.SpatialBatchNormalization(768))
+    net:add(nn.ReLU(true))
+    net:add(nn.SpatialMaxPooling(3, 3, 2, 2))
+
+    net:add(nn.SpatialDropout(0.1))
     net:add(nn.SpatialConvolution(768, 1024,
             3, 3,
             1, 1,

@@ -51,8 +51,8 @@ local classes = testingDataLoader.classes
 -- Define neural network
 --local archOutputName = 'second-arch-conv-padding-no-fully-connected-better-normalization-normed-inception.net'
 --net, opt = secondArchConvPaddingNoFullyConnectedLayersBetterNormalizationNormedInception()
-local archOutputName = 'sixth-arch.net'
-net, opt = sixthArch()
+local archOutputName = 'sixth-arch-more-dropout.net'
+net, opt = sixthArchMoreDropout()
 print("Network: ")
 print(net)
 print("Options: ")
