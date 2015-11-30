@@ -77,7 +77,7 @@ if not EXCLUDE_CUDA_FLAG then
 end
 
 -- Setup table for optimizer parameters
-local memoryLength = 6
+local memoryLength = opt.batchSize
 optimConfig = {
     learningRate = opt.learningRate,
     weightDecay = opt.weightDecay,
@@ -143,6 +143,11 @@ end
 
 -- Train the net, layer by layer, using adaptive learning rates
 local function train()
+    if not epoch then
+        epoch = 1
+    else
+        epoch = epoch + 1
+    end
     collectgarbage()
     net:training()
     -- Setup mini-batches
@@ -160,30 +165,13 @@ local function train()
         local inputs = trainingDataLoader.data:index(1, v)
         targets:copy(trainingDataLoader.labels:index(1, v))
 
+        -- Zero (I'm actually not sure why this has to be done 
+        --  on each layerGradParameter..there's something messed up with 
+        --  references I think...)
         gradParameters:zero()
-        --[[
-        print("Are the grad parameters being zeroed properly?")
-        print("###############################################")
-        print("###############################################")
-        print("###############################################")
-        print(gradParameters[1])
-        print("###############################################")
-        print("###############################################")
-        print("###############################################")
-        --]]
         for i = 1, #layerGradParameters do
             layerGradParameters[i]:zero()
-            --print(layerGradParameters[i]:size())
-            if layerGradParameters[i]:nDimension() ~= 0 then
-                --print(layerGradParameters[i][1])
-            end
-            --print("--------------------------------------------")
         end
-        --[[
-        print("###############################################")
-        print("###############################################")
-        print("###############################################")
-        --]]
 
         -- Run network forward and backward
         local outputs = net:forward(inputs)
@@ -194,34 +182,25 @@ local function train()
 
         -- Perform layer-wise optimization on the weights
         for i = 1, #layerParameters do
-            --print("-----------------------------------------------------------")
-            --print("i: ", i)
-            --print(net:get(i))
-            
-            --print("layerGradParameters: ")
-            --print(layerGradParameters[i]:size())
-            --print('-----------------------------------')
-
-            --print("\nlayerParameters: ")
-            --print(layerParameters[i]:size())
-            --print('-----------------------------------')
-
-            if layerParameters[i]:nDimension() == 0 then
-                --print("Skipping layer!\n\n")
-            else
-                -- Allocate space on first runs, zero on subsequent runs
+            -- If this layer has parameters to be optimized
+            if layerParameters[i]:nDimension() ~= 0 then
+                -- If this isn't the first epoch (we need right/wrong data first)
                 --[[
-                if not layerOptimConfig[i].learningRates then
-                    -- Assign learning rates based on whether there was an error
-                    layerOptimConfig[i].learningRates = torch.zeros(layerGradParameters[i]:size(1), 1)
-                else
-                    layerOptimConfig[i].learningRates:zero()
+                if epoch > 1 then
+                    -- Allocate space on first runs, zero on subsequent runs
+                    if not layerOptimConfig[i].learningRates then
+                        -- Assign learning rates based on whether there was an error
+                        layerOptimConfig[i].learningRates = torch.zeros(layerGradParameters[i]:size(1), 1)
+                    else
+                        layerOptimConfig[i].learningRates:zero()
+                    end
+                    layerOptimConfig[i].numRight numCorrectIncorrect(outputs, targets)
+                    -- Sum up layerGradParameters
+                    -- Divide each neuron layerGrad by the sum
+                    -- Use this fraction to decide whether correct/incorrect applies
+
                 end
                 --]]
-
-                -- Sum up layerGradParameters
-                -- Divide each neuron layerGrad by the sum
-                -- Use this fraction to decide whether correct/incorrect applies
 
                 local feval = function(x)
                     return _, layerGradParameters[i]
