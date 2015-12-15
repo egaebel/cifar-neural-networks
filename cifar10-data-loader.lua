@@ -10,6 +10,8 @@ else
     EXCLUDE_CUDA_FLAG = true
 end
 
+require 'data-augmentation'
+
 Cifar10Loader = {}
 
 local trainFile = 'cifar10-train.t7'
@@ -153,11 +155,6 @@ local function normalizeData(passedData, passedMean, passedStdv)
     return mean, stdv
 end
 
--- Perform data augmentation on the passed dataset
-local function dataAugmentation(passedDataset)
-    -- TODO
-end
-
 --------------------------------------------------------------------------------
 --Below are class methods for Cifar10Loader
 --------------------------------------------------------------------------------
@@ -231,6 +228,12 @@ if not EXCLUDE_CUDA_FLAG then
         self.data = self.data:cuda()
         self.labels = self.labels:cuda()
     end
+end
+
+-- Perform data augmentation on the passed dataset
+function Cifar10Loader:dataAugmentation()
+    print("Augmenting data in cifar10-data-loader....")
+    self.data, self.labels = data_augmentation(self.data, self.labels)
 end
 
 -- Group the loaded data by label and sort by label number

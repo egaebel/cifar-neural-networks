@@ -17,8 +17,6 @@ local function cudaRequires()
     require 'cutorch'
     print('Importing cunn.......')
     require 'cunn'
-    --print('Importing cudnn......')
-    --require 'cudnn'
 end
 if pcall(cudaRequires) then
     print('Imported cuda modules in first-cnn-arch')
@@ -26,14 +24,6 @@ else
     print('Failed to import cuda modules in first-cnn-arch')
     EXCLUDE_CUDA_FLAG = true
 end
---[[
-local nnLib = nn
-if not EXCLUDE_CUDA_FLAG then
-    nnLib = cudnn
-end
---]]
-
-
 
 --------------------------------------------------------------------------------
 -- Main Runner Code-------------------------------------------------------------
@@ -51,12 +41,26 @@ local testingDataLoader = Cifar10Loader(dataDir, 'validate', sizeRestriction)
 --local testingDataLoader = Cifar10Loader(dataDir, 'test', sizeRestriction)
 local classes = testingDataLoader.classes
 
+local function loadModelFromFile(fileName)
+    local filePath = paths.concat('model-nets', fileName)
+    print('==> loading model from ' .. filePath)
+    net = torch.load(filePath)
+    return net
+end
+
 --------------------------------------------------------------------------------
 ---------------------------MODEL SELECTION--------------------------------------
 --------------------------------------------------------------------------------
--- Define neural network
+local LOAD_MODEL_FROM_FILE = true
 local archOutputName = 'sixth-arch--layer-wise-test.net'
-net, opt = sixthArch()
+if LOAD_MODEL_FROM_FILE then
+    _, opt = sixthArch()
+    -- left off at epoch 13
+    net = loadModelFromFile('sixth-arch--layer-wise-test.net_epoch_1')
+else
+    -- Define neural network
+    net, opt = sixthArch()
+end
 print("Network: ")
 print(net)
 print("Options: ")
@@ -83,14 +87,6 @@ optimConfig = {
     weightDecay = opt.weightDecay,
     momentum = opt.momentum,
     learningRateDecay = opt.learningRateDecay
-    -- Learning rates and related parameters
-    -- Start off with equalized right/wrong ratio
-    --[[
-    memoryLength = memoryLength,
-    numWrong = memoryLength / 2,
-    numRight = memoryLength / 2,
-    learningRates = nil
-    --]]
 }
 local function copyTable(mytable)
     newtable = {}
@@ -128,11 +124,11 @@ local confusion = optim.ConfusionMatrix(trainingDataLoader.classes)
 local function numCorrectIncorrect(outputs, targets)
     local nCorrect = 0
     local nIncorrect = 0
-    print("targets:size(): ")
-    print(targets:size(1))
+
+    _, outputVector = torch.max(outputs, 2)
+
     for i = 1, targets:size(1) do
-        _, output = torch.max(outputs, 2)
-        if output == targets[i] then
+        if outputVector[i][1] == targets[i] then
             nCorrect = nCorrect + 1
         else
             nIncorrect = nIncorrect + 1
@@ -185,23 +181,36 @@ local function train()
             -- If this layer has parameters to be optimized
             if layerParameters[i]:nDimension() ~= 0 then
                 -- If this isn't the first epoch (we need right/wrong data first)
-                --[[
                 if epoch > 1 then
-                    -- Allocate space on first runs, zero on subsequent runs
-                    if not layerOptimConfig[i].learningRates then
-                        -- Assign learning rates based on whether there was an error
-                        layerOptimConfig[i].learningRates = torch.zeros(layerGradParameters[i]:size(1), 1)
+                    local numCorrect, numIncorrect = numCorrectIncorrect(outputs, targets)
+                    -- When the right wrong threshold is crossed transform the
+                    -- largest weights to be reduced
+                    -- 1 - 0.20 = 0.80 (at 80% accuracy this kicks in)
+                    local RIGHT_WRONG_THESHOLD = 0.2
+                    local PERCENT_TOTAL_WEIGHT_CUTOFF = 0
+                    if numIncorrect / numCorrect < RIGHT_WRONG_THESHOLD then
+                        -- Allocate space on first runs, zero on subsequent runs
+                        if not layerOptimConfig[i].learningRates then
+                            -- Assign learning rates based on whether there was an error
+                            layerOptimConfig[i].learningRates = torch.zeros(layerGradParameters[i]:size(1), 1)
+                        else
+                            layerOptimConfig[i].learningRates:zero()
+                        end
+                        local weightsSum = 0
+                        for j = 1, layerParameters[i]:size(1) do
+                            weightsSum = weightsSum + torch.abs(layerParameters[i][j])
+                        end
+                        local percentTotalWeight
+                        for j = 1, layerParameters[i]:size(1) do
+                            percentTotalWeight = (torch.abs(layerParameters[i][j]) / weightsSum) * 100
+                            layerOptimConfig[i].learningRates[j] = (1 - percentTotalWeight)
+                        end
                     else
-                        layerOptimConfig[i].learningRates:zero()
+                        -- Remove the learning rates if numIncorrect / numCorrect rises above threshold again
+                        layerOptimConfig[i].learningRates = nil
                     end
-                    layerOptimConfig[i].numRight numCorrectIncorrect(outputs, targets)
-                    -- Sum up layerGradParameters
-                    -- Divide each neuron layerGrad by the sum
-                    -- Use this fraction to decide whether correct/incorrect applies
-
                 end
-                --]]
-
+                -- Perform optimization
                 local feval = function(x)
                     return _, layerGradParameters[i]
                 end
@@ -220,33 +229,6 @@ local function train()
     confusion:zero()
     print('------------------------------------------------')
 end
-
---[[
-
-        print("Adding to layerOptimConfig....")
-                -- If there were enough errors to be "significant"
-                -- Sum up the number correct/incorrect in the batch
-                -- If the number of correct or incorrect is "significant" update
-                -- right/wrong ratio for the layer
-                local nCorrect, nIncorrect = numCorrectIncorrect(outputs, targets)
-                -- Increment the number right if at least a quarter of the batch was
-                -- correct
-                if nCorrect > opt.batchSize / 4 then
-                    layerOptimConfig[i].numRight = layerOptimConfig[i].numRight + 1
-                    layerOptimConfig[i].numWrong = layerOptimConfig[i].numWrong - 1
-                -- Only increment the number wrong if there are lots right
-                -- For now I'm only going to do positive reinforcement
-                -- That is, the wrong/right ratio is <= 1
-                elseif nIncorrect > opt.batchSize / 4 
-                        and layerOptimConfig[i].numWrong < layerOptimConfig[i].numRight then
-                    layerOptimConfig[i].numWrong = layerOptimConfig[i].numWrong + 1
-                    layerOptimConfig[i].numRight = layerOptimConfig[i].numRight - 1
-                end
-                local rightWrongRatio = layerOptimConfig[i].numWrong / layerOptimConfig[i].numRight
-                layerOptimConfig[i].learningRates:add(rightWrongRatio)
-
-
---]]
 
 local function test()
     -- Validate data (eventually turn this into test)
@@ -290,11 +272,12 @@ for i = 1, opt.maxEpoch do
     test()
 
     -- Save model every 10 epochs
-    if i % 10 == 0 then
-        local filename = paths.concat(opt.netSaveDir, archOutputName)
-        print('==> saving model to ' .. filename)
-        torch.save(filename, net)
-    end
+    --if i % 10 == 0 then
+    --Changed for positive reinforcement
+    local filename = paths.concat(opt.netSaveDir, archOutputName .. "_epoch_" .. i)
+    print('==> saving model to ' .. filename .. "_epoch_" .. i)
+    torch.save(filename, net)
+    --end
 end
 print(('Total model trained in time: %f seconds'):format(torch.toc(globalTic)))
 --]]

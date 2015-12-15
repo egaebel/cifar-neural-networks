@@ -2,12 +2,13 @@ require 'torch'
 require 'nn'
 require 'optim'
 require 'image'
-require 'models'
 local c = require 'trepl.colorize'
 if itorch then
     path = require 'pl.path'
 end
 
+require 'models'
+require 'data-augmentation'
 require 'cifar10-data-loader'
 
 -- CUDA Import Stuff
@@ -17,8 +18,6 @@ local function cudaRequires()
     require 'cutorch'
     print('Importing cunn.......')
     require 'cunn'
-    --print('Importing cudnn......')
-    --require 'cudnn'
 end
 if pcall(cudaRequires) then
     print('Imported cuda modules in first-cnn-arch')
@@ -26,13 +25,6 @@ else
     print('Failed to import cuda modules in first-cnn-arch')
     EXCLUDE_CUDA_FLAG = true
 end
---[[
-local nnLib = nn
-if not EXCLUDE_CUDA_FLAG then
-    nnLib = cudnn
-end
---]]
-
 
 
 --------------------------------------------------------------------------------
@@ -41,6 +33,7 @@ end
 -- Setup data loader
 local dataDir = 'torch-data'
 local trainingDataLoader = Cifar10Loader(dataDir, 'train', sizeRestriction)
+trainingDataLoader:dataAugmentation()
 local testingDataLoader = Cifar10Loader(dataDir, 'validate', sizeRestriction)
 --local testingDataLoader = Cifar10Loader(dataDir, 'test', sizeRestriction)
 local classes = testingDataLoader.classes
@@ -49,10 +42,8 @@ local classes = testingDataLoader.classes
 ---------------------------MODEL SELECTION--------------------------------------
 --------------------------------------------------------------------------------
 -- Define neural network
---local archOutputName = 'second-arch-conv-padding-no-fully-connected-better-normalization-normed-inception.net'
---net, opt = secondArchConvPaddingNoFullyConnectedLayersBetterNormalizationNormedInception()
-local archOutputName = 'sixth-arch-more-dropout.net'
-net, opt = sixthArchMoreDropout()
+local archOutputName = 'sixth-arch-data-augmentation-2.net'
+net, opt = sixthArch()
 print("Network: ")
 print(net)
 print("Options: ")
@@ -73,7 +64,7 @@ criterion = nn.CrossEntropyCriterion()
 -- CUDA-fy loss function, model, and data set
 if not EXCLUDE_CUDA_FLAG then
     criterion = criterion:cuda()
-    trainingDataLoader:cuda()
+    -- trainingDataLoader:cuda() -- Comment out for data augmentation (OOM otherwise)
     testingDataLoader:cuda()
     net = net:cuda()
 end
@@ -106,14 +97,22 @@ local function train()
     local tic = torch.tic()
     for t, v in ipairs(indices) do
         local inputs = trainingDataLoader.data:index(1, v)
+        local targets = torch.Tensor(opt.batchSize)
+        if not EXCLUDE_CUDA_FLAG then
+            targets = targets:cuda()
+        end
         targets:copy(trainingDataLoader.labels:index(1, v))
+
+        -- put inputs on GPU here, per-batch! Done for data augmentation.
+        inputs = inputs:cuda()
+        collectgarbage()
+
         local feval = function(x)
             if x ~= parameters then
                 parameters:copy(x)
             end
             -- Zero out the gradient parameters from last iteration
             gradParameters:zero()
-            
             local outputs = net:forward(inputs)
             local f = criterion:forward(outputs, targets)
             local df_do = criterion:backward(outputs, targets)
@@ -147,8 +146,8 @@ local function test()
     net:evaluate()
     for i = 1, testingDataLoader.data:size(1), opt.batchSize do
         local outputs
-        if (i + opt.batchSize - 1) > testingDataLoader.data:size(1) then
-            local endIndex = testingDataLoader.data:size(1) - i
+        if (i + opt.batchSize) > testingDataLoader.data:size(1) then
+            local endIndex = testingDataLoader.data:size(1) - i + 1
             outputs = net:forward(testingDataLoader.data:narrow(1, i, endIndex))
             confusion:batchAdd(outputs, testingDataLoader.labels:narrow(1, i, endIndex))
         else
